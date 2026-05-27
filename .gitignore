@@ -1,0 +1,23 @@
+# Build output from BigWigs packager
+.release/
+*.zip
+
+# Embedded libraries are fetched by packager via .pkgmeta — don't commit them.
+# Negation must be on contents (not the dir itself) because git cannot re-include
+# files under an excluded parent directory.
+Libs/*
+
+# …except libraries with no reliable packager source (committed directly):
+!Libs/LibDataBroker-1.1
+!Libs/LibDBIcon-1.0
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local dev settings
+*.local.lua

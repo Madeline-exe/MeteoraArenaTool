@@ -1,0 +1,43 @@
+name: Package and Release
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Package addon (with Ace3 libs embedded)
+        uses: BigWigsMods/packager@v2
+        with:
+          args: -g bcc -w 0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload build artifact (non-tag builds)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: MeteoraArenaTool-${{ github.sha }}
+          path: .release/*.zip
+          retention-days: 14
+
+      - name: Publish GitHub Release (tag builds)
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: .release/*.zip
+          fail_on_unmatched_files: true
+          generate_release_notes: true

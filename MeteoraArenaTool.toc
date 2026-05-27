@@ -1,0 +1,42 @@
+## Interface: 20505
+## Title: Meteora Arena Tool
+## Notes: Arena tracker: match history, enemy comps, win-rates, in-arena cooldown hints.
+## Notes-ruRU: Арена-трекер: история матчей, составы врагов, винрейты, подсказки сейвов в бою.
+## Author: Meteora
+## Version: 0.1.0
+## SavedVariables: MeteoraArenaToolDB
+## OptionalDeps: Ace3
+## X-Category: PvP
+## X-Embeds: Ace3, LibDeflate, LibSerialize
+
+#@no-lib-strip@
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+Libs\AceAddon-3.0\AceAddon-3.0.xml
+Libs\AceEvent-3.0\AceEvent-3.0.xml
+Libs\AceTimer-3.0\AceTimer-3.0.xml
+Libs\AceBucket-3.0\AceBucket-3.0.xml
+Libs\AceHook-3.0\AceHook-3.0.xml
+Libs\AceDB-3.0\AceDB-3.0.xml
+Libs\AceLocale-3.0\AceLocale-3.0.xml
+Libs\AceConsole-3.0\AceConsole-3.0.xml
+Libs\AceComm-3.0\AceComm-3.0.xml
+Libs\LibDeflate\LibDeflate.lua
+Libs\LibSerialize\LibSerialize.lua
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+#@end-no-lib-strip@
+
+Locale\enUS.lua
+Locale\ruRU.lua
+
+Core.lua
+
+Modules\Detector.lua
+Modules\EnemyScanner.lua
+Modules\Match.lua
+
+UI\Skin.lua
+UI\MainFrame.lua
+UI\MainPanel.lua
+UI\PostMatchNote.lua
