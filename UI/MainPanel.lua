@@ -253,10 +253,7 @@ local function ensureFeedRow(i, parent)
     return row
 end
 
-local function buildFeedTab(container)
-    -- Wipe container children
-    for _, c in ipairs({ container:GetChildren() }) do c:Hide(); c:SetParent(nil) end
-
+local function buildFeedContent(container)
     -- Header strip
     local header = CreateFrame("Frame", nil, container, "BackdropTemplate")
     Skin:ApplyDark(header, Skin.color.bgAlt, Skin.color.borderLight)
@@ -279,7 +276,6 @@ local function buildFeedTab(container)
     hCol(L["col_duration"] or "Dur",    422, 54)
     hCol(L["col_enemy"]   or "Enemy",   480, 220)
 
-    -- Scroll
     feedScroll = CreateFrame("ScrollFrame", "MATFeedScroll", container, "UIPanelScrollFrameTemplate")
     feedScroll:SetPoint("TOPLEFT",     header, "BOTTOMLEFT", 0, -2)
     feedScroll:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -28, 4)
@@ -291,8 +287,6 @@ local function buildFeedTab(container)
     feedEmpty = container:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     feedEmpty:SetPoint("CENTER", feedScroll, "CENTER", 0, 0)
     feedEmpty:SetText(L["no_matches"] or "")
-
-    UI:RefreshFeed()
 end
 
 function UI:RefreshFeed()
@@ -338,28 +332,53 @@ end
 -- Placeholder tabs
 -- ------------------------------------------------------------
 
-local function buildPlaceholder(container, msgKey)
-    for _, c in ipairs({ container:GetChildren() }) do c:Hide(); c:SetParent(nil) end
+local function buildPlaceholderContent(container, msgKey)
     local fs = container:CreateFontString(nil, "OVERLAY", "GameFontDisableLarge")
     fs:SetPoint("CENTER", container, "CENTER", 0, 0)
     fs:SetText(L[msgKey] or L["coming_soon"] or "Coming soon")
 end
 
 -- ------------------------------------------------------------
--- Tab switching
+-- Tab switching — build each tab's content frame exactly once
+-- and just show/hide on switch. The earlier "wipe + rebuild on
+-- every switch" pattern (a) orphaned the row pool because
+-- SetParent(nil) on cached rows leaves feedRows pointing at
+-- detached frames, and (b) stacked FontStrings across switches
+-- because container:CreateFontString attaches a Region (not a
+-- child), so GetChildren()/SetParent(nil) doesn't reach it.
 -- ------------------------------------------------------------
+
+local tabContents   = {}  -- [tabValue] = Frame (lazy-built once)
+local tabRefreshers = {}  -- [tabValue] = function() refresh data end
+
+local function getTabContent(tabValue)
+    if tabContents[tabValue] then return tabContents[tabValue] end
+
+    local f = CreateFrame("Frame", nil, contentArea)
+    f:SetAllPoints(contentArea)
+    f:Hide()
+    tabContents[tabValue] = f
+
+    if tabValue == "feed" then
+        buildFeedContent(f)
+        tabRefreshers[tabValue] = function() UI:RefreshFeed() end
+    else
+        buildPlaceholderContent(f, "coming_soon")
+    end
+    return f
+end
 
 local function showTab(tabValue)
     if not main then build() end
     currentTab = tabValue
     for value, btn in pairs(tabButtons) do setTabActive(btn, value == tabValue) end
 
+    for _, f in pairs(tabContents) do f:Hide() end
+
     local ok, err = pcall(function()
-        if tabValue == "feed" then
-            buildFeedTab(contentArea)
-        else
-            buildPlaceholder(contentArea, "coming_soon")
-        end
+        local content = getTabContent(tabValue)
+        content:Show()
+        if tabRefreshers[tabValue] then tabRefreshers[tabValue]() end
     end)
     if not ok then MAT:Print("|cffff5555[Tab " .. tabValue .. "]|r " .. tostring(err)) end
 end
