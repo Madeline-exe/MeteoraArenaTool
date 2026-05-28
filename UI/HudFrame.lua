@@ -337,8 +337,6 @@ end
 
 function Hud:OnArenaEntered()
     if hideTimer then self:CancelTimer(hideTimer); hideTimer = nil end
-    -- Diagnostic ping so a test session can confirm the message fires.
-    MAT:Print(string.format("HUD: arena entered (hidden=%s)", tostring(db().hidden)))
     self:ShowFrame()
 end
 

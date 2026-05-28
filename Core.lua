@@ -117,6 +117,8 @@ function MAT:OnSlashCommand(input)
         if self.UI and self.UI.Toggle then self.UI:Toggle() end
     elseif cmd == "feed" then
         if self.UI and self.UI.OpenTab then self.UI:OpenTab("feed") end
+    elseif cmd == "stats" then
+        if self.UI and self.UI.OpenTab then self.UI:OpenTab("stats") end
     elseif cmd == "lfg" then
         if rest == "debug" then
             if self.LFG and self.LFG.DebugStatus then self.LFG:DebugStatus() end
@@ -164,6 +166,7 @@ end
 function MAT:PrintHelp()
     self:Print("|cffffd200/mat|r " .. L["help_show"])
     self:Print("|cffffd200/mat feed|r " .. L["help_feed"])
+    self:Print("|cffffd200/mat stats|r " .. (L["help_stats"] or "— open stats tab"))
     self:Print("|cffffd200/mat lfg|r " .. (L["help_lfg"] or "— open LFG tab"))
     self:Print("|cffffd200/mat lfg debug|r " .. (L["help_lfg_debug"] or "— print LFG channel/listings state"))
     self:Print("|cffffd200/mat hud|r " .. (L["help_hud"] or "— show HUD status"))

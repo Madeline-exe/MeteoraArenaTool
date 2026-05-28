@@ -3,7 +3,7 @@
 ## Notes: Arena tracker: match history, enemy comps, win-rates, in-arena cooldown hints.
 ## Notes-ruRU: Арена-трекер: история матчей, составы врагов, винрейты, подсказки сейвов в бою.
 ## Author: Meteora
-## Version: 0.2.6
+## Version: 0.3.0
 ## SavedVariables: MeteoraArenaToolDB
 ## OptionalDeps: Ace3
 ## X-Category: PvP
@@ -46,5 +46,6 @@ UI\MainFrame.lua
 UI\LFGPanel.lua
 UI\HudFrame.lua
 UI\SettingsPanel.lua
+UI\StatsPanel.lua
 UI\MainPanel.lua
 UI\PostMatchNote.lua

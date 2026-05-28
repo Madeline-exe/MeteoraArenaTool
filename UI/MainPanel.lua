@@ -373,6 +373,9 @@ local function getTabContent(tabValue)
     elseif tabValue == "settings" and UI.SettingsPanel then
         UI.SettingsPanel:Build(f)
         tabRefreshers[tabValue] = function() UI.SettingsPanel:Refresh() end
+    elseif tabValue == "stats" and UI.StatsPanel then
+        UI.StatsPanel:Build(f)
+        tabRefreshers[tabValue] = function() UI.StatsPanel:Refresh() end
     else
         buildPlaceholderContent(f, "coming_soon")
     end

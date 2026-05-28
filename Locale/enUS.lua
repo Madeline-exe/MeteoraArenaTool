@@ -11,6 +11,7 @@ L["wipe_usage"]    = "Use: /mat wipe history"
 -- Slash help
 L["help_show"] = "— open main window"
 L["help_feed"] = "— jump to match feed"
+L["help_stats"] = "— open stats tab"
 L["help_lfg"]  = "— open LFG / team finder"
 L["help_wipe"] = "— delete all stored matches"
 L["help_hud"]       = "— show HUD status and command list"
@@ -31,6 +32,19 @@ L["settings_feed"]         = "Match feed"
 L["settings_ask_note"]     = "Ask for a note after each match"
 L["settings_minimap"]      = "Minimap"
 L["settings_minimap_show"] = "Show minimap button"
+
+-- Stats tab
+L["stats_bracket"]   = "Bracket:"
+L["stats_period"]    = "Period:"
+L["stats_all"]       = "All"
+L["stats_today"]     = "Today"
+L["stats_week"]      = "Week"
+L["stats_month"]     = "Month"
+L["stats_total"]     = "Total"
+L["stats_winrate"]   = "Win%"
+L["stats_top_comps"] = "Top enemy comps"
+L["stats_maps"]      = "Maps"
+L["stats_partners"]  = "Partners"
 
 -- Minimap
 L["minimap_lmb"] = "open"
