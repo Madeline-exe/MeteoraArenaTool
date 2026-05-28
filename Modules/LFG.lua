@@ -160,42 +160,29 @@ end
 -- ------------------------------------------------------------
 
 local VALID_BRACKETS = { ["2v2"] = true, ["3v3"] = true, ["5v5"] = true, ["Skirmish"] = true }
-local VALID_KINDS    = { LFG = true, LFM = true }
 local VALID_CLASSES  = {
     WARRIOR = true, PALADIN = true, HUNTER = true, ROGUE = true, PRIEST = true,
     SHAMAN = true, MAGE = true, WARLOCK = true, DRUID = true,
-    DEATHKNIGHT = true,  -- accept in case of expansion future-proofing
+    DEATHKNIGHT = true,
 }
 
+-- v0.2.2: kind and wantClasses are dropped from the form. Accept either
+-- shape from peers (older clients still send them) but never require them.
 local function sanitizeListing(l)
     if type(l) ~= "table" then return nil end
-    if not VALID_KINDS[l.kind] then return nil end
     if not VALID_BRACKETS[l.bracket] then return nil end
 
     local out = {
-        kind        = l.kind,
         bracket     = l.bracket,
         myClassFile = VALID_CLASSES[l.myClassFile] and l.myClassFile or nil,
         myRating    = (type(l.myRating) == "number" and l.myRating > 0 and l.myRating < 10000) and math.floor(l.myRating) or nil,
-        wantClasses = {},
         comment     = "",
         createdAt   = (type(l.createdAt) == "number") and l.createdAt or time(),
         expiresAt   = (type(l.expiresAt) == "number") and l.expiresAt or (time() + DEFAULT_EXPIRY_MIN * 60),
     }
 
-    if type(l.wantClasses) == "table" then
-        local seen = {}
-        for _, c in ipairs(l.wantClasses) do
-            if VALID_CLASSES[c] and not seen[c] then
-                seen[c] = true
-                table.insert(out.wantClasses, c)
-            end
-        end
-    end
-
     if type(l.comment) == "string" then
-        local c = l.comment:gsub("[%c]", " "):sub(1, MAX_COMMENT_LEN)
-        out.comment = c
+        out.comment = l.comment:gsub("[%c]", " "):sub(1, MAX_COMMENT_LEN)
     end
 
     return out
@@ -373,18 +360,16 @@ function LFG:IsActive()
 end
 
 function LFG:Post(input)
-    -- input: { kind, bracket, myRating, wantClasses, comment, expiryMin }
+    -- input: { bracket, myRating, comment, expiryMin }
     local _, classFile = UnitClass("player")
     local expiryMin = tonumber(input.expiryMin) or DEFAULT_EXPIRY_MIN
     if expiryMin < 5 then expiryMin = 5 end
     if expiryMin > 120 then expiryMin = 120 end
 
     local listing = {
-        kind        = input.kind,
         bracket     = input.bracket,
         myClassFile = classFile,
         myRating    = tonumber(input.myRating),
-        wantClasses = input.wantClasses or {},
         comment     = input.comment or "",
         createdAt   = time(),
         expiresAt   = time() + expiryMin * 60,
@@ -397,7 +382,12 @@ function LFG:Post(input)
 
     MAT.db.profile.lfg.myListing = listing
     self:StartBroadcastLoop()
-    self:BroadcastSelf()  -- send first one immediately
+    local ok = self:BroadcastSelf()
+    MAT:Print(string.format("|cffffd200LFG|r %s %s (rating=%s) %s",
+        L["lfg_posted"] or "posted",
+        listing.bracket,
+        listing.myRating and tostring(listing.myRating) or "-",
+        ok and "" or ("|cffff5555[" .. (L["lfg_send_failed"] or "broadcast failed: channel id=0") .. "]|r")))
     MAT:SendMessage("MAT_LFG_UPDATED")
     return true
 end
@@ -414,11 +404,11 @@ end
 
 function LFG:BroadcastSelf()
     local my = MAT.db.profile.lfg.myListing
-    if not my then return end
+    if not my then return false end
     if my.expiresAt and my.expiresAt < time() then
-        self:Clear(true); return
+        self:Clear(true); return false
     end
-    broadcast({ op = "POST", listing = my })
+    return broadcast({ op = "POST", listing = my })
 end
 
 function LFG:StartBroadcastLoop()
@@ -438,9 +428,39 @@ function LFG:WipeRemote()
 end
 
 function LFG:DebugStatus()
+    local id = channelId()
+    MAT:Print("|cffffd200=== LFG debug ===|r")
+    MAT:Print(string.format("channel '%s' id=%d %s", self.channelName, id,
+        id == 0 and "|cffff5555NOT JOINED|r" or "|cff4fdd4fjoined|r"))
+    MAT:Print(string.format("commPrefix=%s, registered=%s",
+        self.commPrefix, tostring(sentPrefixRegistered)))
+    local my = MAT.db.profile.lfg.myListing
+    if my then
+        MAT:Print(string.format("my listing: bracket=%s class=%s rating=%s expires=%ds",
+            my.bracket or "?", my.myClassFile or "?",
+            my.myRating and tostring(my.myRating) or "-",
+            (my.expiresAt or 0) - time()))
+    else
+        MAT:Print("my listing: none")
+    end
     local count = 0
-    for _ in pairs(listings) do count = count + 1 end
-    MAT:Print(string.format("|cffffd200LFG|r channel id=%d, listings=%d, mine=%s",
-        channelId(), count,
-        MAT.db.profile.lfg.myListing and "yes" or "no"))
+    for k, v in pairs(listings) do
+        count = count + 1
+        MAT:Print(string.format("  peer #%d: %s (sender=%s) bracket=%s rating=%s lastSeen=%ds ago",
+            count, k, v.sender or "?",
+            v.listing and v.listing.bracket or "?",
+            v.listing and v.listing.myRating and tostring(v.listing.myRating) or "-",
+            math.floor(GetTime() - (v.lastSeen or 0))))
+    end
+    MAT:Print(string.format("total peers seen: %d", count))
+    -- Try a broadcast and report result
+    if my then
+        local ok = self:BroadcastSelf()
+        MAT:Print(string.format("test broadcast: %s",
+            ok and "|cff4fdd4fsent|r" or "|cffff5555failed (channel not joined)|r"))
+    end
+    -- Try a PING
+    local ok = broadcast({ op = "PING" })
+    MAT:Print(string.format("test PING: %s",
+        ok and "|cff4fdd4fsent|r" or "|cffff5555failed|r"))
 end
