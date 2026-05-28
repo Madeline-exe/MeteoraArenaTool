@@ -208,8 +208,10 @@ local function enemyCategorySet(enemy)
 end
 
 local function pickSaves(myClass, categories)
-    local list = ns.Data and ns.Data.Cooldowns
-                 and ns.Data.Cooldowns.Saves and ns.Data.Cooldowns.Saves[myClass]
+    local CD = ns.Data and ns.Data.Cooldowns
+    if not CD then return {} end
+    local list = CD.GetEffectiveSaves and CD.GetEffectiveSaves(myClass)
+                 or (CD.Saves and CD.Saves[myClass])
     if not list then return {} end
     local scored = {}
     for _, s in ipairs(list) do

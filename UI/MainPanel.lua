@@ -376,6 +376,9 @@ local function getTabContent(tabValue)
     elseif tabValue == "stats" and UI.StatsPanel then
         UI.StatsPanel:Build(f)
         tabRefreshers[tabValue] = function() UI.StatsPanel:Refresh() end
+    elseif tabValue == "cd" and UI.CooldownsPanel then
+        UI.CooldownsPanel:Build(f)
+        tabRefreshers[tabValue] = function() UI.CooldownsPanel:Refresh() end
     else
         buildPlaceholderContent(f, "coming_soon")
     end

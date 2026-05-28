@@ -46,6 +46,13 @@ L["stats_top_comps"] = "Top enemy comps"
 L["stats_maps"]      = "Maps"
 L["stats_partners"]  = "Partners"
 
+-- Cooldowns tab
+L["cd_class"]     = "Class:"
+L["cd_my_saves"]  = "Saves"
+L["cd_threats"]   = "Threats from"
+L["cd_vs"]        = "vs"
+L["cd_no_data"]   = "No data for this class."
+
 -- Minimap
 L["minimap_lmb"] = "open"
 L["minimap_rmb"] = "settings"

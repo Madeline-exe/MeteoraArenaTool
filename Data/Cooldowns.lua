@@ -184,7 +184,40 @@ Saves.DRUID = {
     { name = "Innervate",         vs = { "burst" },           severity = 1 }, -- on healer partner
 }
 
+-- ============================================================
+-- Effective saves accessor.
+--
+-- Reads `MAT.db.global.cdOverrides[class] = {
+--     disabled = { [defaultSaveName] = true },
+--     custom   = { { name, vs = {cat,...}, severity }, ... },
+-- }` and returns the merged list:
+--   * defaults from Saves[class] minus those whose name is in `disabled`,
+--   * followed by user-added `custom` entries.
+--
+-- HUD and the Cooldowns panel both go through this; the Saves table
+-- itself is treated as immutable seed data.
+-- ============================================================
+
+local function getEffectiveSaves(class)
+    local out = {}
+    if not class or not Saves[class] then return out end
+    local overrides = ns.MAT and ns.MAT.db and ns.MAT.db.global
+                      and ns.MAT.db.global.cdOverrides
+                      and ns.MAT.db.global.cdOverrides[class] or {}
+    local disabled = overrides.disabled or {}
+    for _, s in ipairs(Saves[class]) do
+        if not disabled[s.name] then
+            table.insert(out, s)
+        end
+    end
+    for _, s in ipairs(overrides.custom or {}) do
+        table.insert(out, s)
+    end
+    return out
+end
+
 ns.Data.Cooldowns = {
-    Threats = Threats,
-    Saves   = Saves,
+    Threats           = Threats,
+    Saves             = Saves,
+    GetEffectiveSaves = getEffectiveSaves,
 }
