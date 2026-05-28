@@ -56,6 +56,13 @@ local defaults = {
         minimap = {
             hide = false,
         },
+        lfg = {
+            expiryMin     = 30,
+            minRating     = 0,
+            maxRating     = 0,
+            filterBracket = "all",
+            filterClass   = "all",
+        },
     },
     global = {
         matches    = {},  -- chronological list of MatchRecord
@@ -110,6 +117,8 @@ function MAT:OnSlashCommand(input)
         if self.UI and self.UI.Toggle then self.UI:Toggle() end
     elseif cmd == "feed" then
         if self.UI and self.UI.OpenTab then self.UI:OpenTab("feed") end
+    elseif cmd == "lfg" then
+        if self.UI and self.UI.OpenTab then self.UI:OpenTab("lfg") end
     elseif cmd == "version" then
         self:Print(L["version"]:format(self.version))
     elseif cmd == "wipe" then
@@ -128,6 +137,7 @@ end
 function MAT:PrintHelp()
     self:Print("|cffffd200/mat|r " .. L["help_show"])
     self:Print("|cffffd200/mat feed|r " .. L["help_feed"])
+    self:Print("|cffffd200/mat lfg|r " .. (L["help_lfg"] or "— open LFG tab"))
     self:Print("|cffffd200/mat wipe history|r " .. L["help_wipe"])
 end
 

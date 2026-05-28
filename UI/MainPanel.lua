@@ -20,6 +20,7 @@ local MIN_WIDTH, MIN_HEIGHT = 760, 460
 
 local TABS = {
     { value = "feed",     labelKey = "tab_feed"     },
+    { value = "lfg",      labelKey = "tab_lfg"      },
     { value = "stats",    labelKey = "tab_stats"    },
     { value = "cd",       labelKey = "tab_cd"       },
     { value = "settings", labelKey = "tab_settings" },
@@ -362,6 +363,9 @@ local function getTabContent(tabValue)
     if tabValue == "feed" then
         buildFeedContent(f)
         tabRefreshers[tabValue] = function() UI:RefreshFeed() end
+    elseif tabValue == "lfg" and UI.LFGPanel then
+        UI.LFGPanel:Build(f)
+        tabRefreshers[tabValue] = function() UI.LFGPanel:Refresh() end
     else
         buildPlaceholderContent(f, "coming_soon")
     end
