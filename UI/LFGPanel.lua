@@ -89,6 +89,28 @@ local function styleToggle(btn, isOn)
     end
 end
 
+-- Skin:CreateButton attaches hover handlers that hard-reset backdrop to
+-- bgAlt/border — that clobbers our "active" styling. For toggle buttons
+-- we override OnEnter/OnLeave to respect a live isActive() predicate so
+-- mouse-over never strips the accent away from the selected option.
+local function bindToggleHover(btn, isActiveFn)
+    btn:SetScript("OnEnter", function(self)
+        if isActiveFn() then
+            self:SetBackdropColor(0.28, 0.38, 0.58, 0.95)
+            self:SetBackdropBorderColor(Skin.color.accent[1], Skin.color.accent[2],
+                                        Skin.color.accent[3], Skin.color.accent[4])
+        else
+            self:SetBackdropColor(Skin.color.bgHover[1], Skin.color.bgHover[2],
+                                  Skin.color.bgHover[3], Skin.color.bgHover[4])
+            self:SetBackdropBorderColor(Skin.color.borderLight[1], Skin.color.borderLight[2],
+                                        Skin.color.borderLight[3], Skin.color.borderLight[4])
+        end
+    end)
+    btn:SetScript("OnLeave", function(self)
+        styleToggle(self, isActiveFn())
+    end)
+end
+
 -- ------------------------------------------------------------
 -- Form state — kept in module, persisted via Post()
 -- ------------------------------------------------------------
@@ -194,13 +216,6 @@ local function passesFilter(entry)
     if lfg.filterBracket and lfg.filterBracket ~= "all" then
         if l.bracket ~= lfg.filterBracket then return false end
     end
-    if lfg.filterClass and lfg.filterClass ~= "all" then
-        if l.myClassFile ~= lfg.filterClass then return false end
-    end
-    if l.myRating then
-        if lfg.minRating and l.myRating < lfg.minRating then return false end
-        if lfg.maxRating and lfg.maxRating > 0 and l.myRating > lfg.maxRating then return false end
-    end
     return true
 end
 
@@ -229,25 +244,30 @@ local function buildForm(parent, yTop)
     local x = 8
     widgets.kindBtns = {}
     for _, k in ipairs(KINDS) do
-        local b = Skin:CreateButton(form_bg, k, 50, 22)
+        local captured = k
+        local b = Skin:CreateButton(form_bg, captured, 50, 22)
         b:SetPoint("TOPLEFT", form_bg, "TOPLEFT", x, rowY)
-        b:SetScript("OnClick", function() form.kind = k; LFGPanel:Refresh() end)
-        widgets.kindBtns[k] = b
+        b:SetScript("OnClick", function() form.kind = captured; LFGPanel:Refresh() end)
+        bindToggleHover(b, function() return form.kind == captured end)
+        widgets.kindBtns[captured] = b
         x = x + 52
     end
 
-    x = x + 16
+    -- Fixed x for "Bracket:" label — GetStringWidth() can return 0 before
+    -- layout, which shifted the bracket buttons under the label on first show.
     local bracketLabel = form_bg:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bracketLabel:SetPoint("LEFT", form_bg, "TOPLEFT", x, rowY - 11)
+    bracketLabel:SetPoint("LEFT", form_bg, "TOPLEFT", 128, rowY - 11)
     bracketLabel:SetText(L["lfg_bracket"] or "Bracket:")
-    x = x + bracketLabel:GetStringWidth() + 6
+    x = 184
 
     widgets.bracketBtns = {}
     for _, b_ in ipairs(BRACKETS) do
-        local b = Skin:CreateButton(form_bg, b_, 64, 22)
+        local captured = b_
+        local b = Skin:CreateButton(form_bg, captured, 64, 22)
         b:SetPoint("TOPLEFT", form_bg, "TOPLEFT", x, rowY)
-        b:SetScript("OnClick", function() form.bracket = b_; LFGPanel:Refresh() end)
-        widgets.bracketBtns[b_] = b
+        b:SetScript("OnClick", function() form.bracket = captured; LFGPanel:Refresh() end)
+        bindToggleHover(b, function() return form.bracket == captured end)
+        widgets.bracketBtns[captured] = b
         x = x + 66
     end
 
@@ -327,10 +347,17 @@ local function buildForm(parent, yTop)
     x = 88
     widgets.classBtns = {}
     for _, c in ipairs(CLASSES) do
-        local b = Skin:CreateButton(form_bg, colorClassShort(c), 40, 22)
+        local captured = c
+        local b = Skin:CreateButton(form_bg, colorClassShort(captured), 40, 22)
         b:SetPoint("TOPLEFT", form_bg, "TOPLEFT", x, rowY)
-        b:SetScript("OnClick", function() toggleClass(c); LFGPanel:Refresh() end)
-        widgets.classBtns[c] = b
+        b:SetScript("OnClick", function() toggleClass(captured); LFGPanel:Refresh() end)
+        bindToggleHover(b, function()
+            for _, c2 in ipairs(form.wantClasses) do
+                if c2 == captured then return true end
+            end
+            return false
+        end)
+        widgets.classBtns[captured] = b
         x = x + 42
     end
 
@@ -404,66 +431,27 @@ local function buildFilters(parent, anchorTo)
     label:SetText(L["lfg_listings"] or "Active listings")
     label:SetTextColor(unpack(Skin.color.accent))
 
-    local x = label:GetStringWidth() + 20
-
-    -- Bracket filter
-    local bf_label = strip:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bf_label:SetPoint("LEFT", strip, "LEFT", x, 0)
-    bf_label:SetText(L["lfg_bracket"] or "Bracket:")
-    x = x + bf_label:GetStringWidth() + 4
+    -- Single filter: bracket. Rating + class filtering was overkill for v0.2.x;
+    -- the form already constrains who you'll match with via wantClasses, and
+    -- raw rating-range filtering on the receive side made the strip too dense.
+    local x = 180
 
     widgets.filterBracketBtns = {}
     local options = { "all", "2v2", "3v3", "5v5", "Skirmish" }
     for _, opt in ipairs(options) do
-        local lbl = (opt == "all") and (L["lfg_all"] or "All") or opt
-        local b = Skin:CreateButton(strip, lbl, 50, 22)
+        local captured = opt
+        local lbl = (captured == "all") and (L["lfg_all"] or "All") or captured
+        local b = Skin:CreateButton(strip, lbl, 56, 22)
         b:SetPoint("LEFT", strip, "LEFT", x, 0)
         b:SetScript("OnClick", function()
-            MAT.db.profile.lfg.filterBracket = opt
+            MAT.db.profile.lfg.filterBracket = captured
             LFGPanel:Refresh()
         end)
-        widgets.filterBracketBtns[opt] = b
-        x = x + 52
+        bindToggleHover(b, function() return (MAT.db.profile.lfg.filterBracket or "all") == captured end)
+        widgets.filterBracketBtns[captured] = b
+        x = x + 58
     end
 
-    -- Rating range
-    x = x + 8
-    local rmin_label = strip:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    rmin_label:SetPoint("LEFT", strip, "LEFT", x, 0)
-    rmin_label:SetText(L["lfg_rating"] or "Rating:")
-    x = x + rmin_label:GetStringWidth() + 4
-
-    local function mkRangeEdit(initial, onChange)
-        local box = CreateFrame("Frame", nil, strip, "BackdropTemplate")
-        Skin:ApplyDark(box, Skin.color.bg, Skin.color.border)
-        box:SetPoint("LEFT", strip, "LEFT", x, 0)
-        box:SetSize(50, 22)
-        local e = CreateFrame("EditBox", nil, box)
-        e:SetFontObject("ChatFontNormal")
-        e:SetPoint("TOPLEFT", box, "TOPLEFT", 6, -3)
-        e:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", -6, 3)
-        e:SetAutoFocus(false)
-        e:SetMaxLetters(4)
-        e:SetNumeric(true)
-        e:SetText(tostring(initial or 0))
-        e:SetScript("OnTextChanged", onChange)
-        e:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-        e:SetScript("OnEnterPressed",  function(self) self:ClearFocus(); LFGPanel:Refresh() end)
-        x = x + 52
-        return e
-    end
-    widgets.minRatingEdit = mkRangeEdit(MAT.db.profile.lfg.minRating, function(self)
-        MAT.db.profile.lfg.minRating = tonumber(self:GetText()) or 0
-    end)
-    local dash = strip:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    dash:SetPoint("LEFT", strip, "LEFT", x - 2, 0)
-    dash:SetText("-")
-    x = x + 6
-    widgets.maxRatingEdit = mkRangeEdit(MAT.db.profile.lfg.maxRating, function(self)
-        MAT.db.profile.lfg.maxRating = tonumber(self:GetText()) or 0
-    end)
-
-    -- Refresh
     local refreshBtn = Skin:CreateButton(strip, L["lfg_refresh"] or "Refresh", 80, 22)
     refreshBtn:SetPoint("RIGHT", strip, "RIGHT", -4, 0)
     refreshBtn:SetScript("OnClick", function()

@@ -91,8 +91,19 @@ local function hideChannelFromUI()
     end
 end
 
+local joinAnnounced = false
+
 local function tryJoinChannel()
-    if channelId() ~= 0 then return true end
+    local existing = channelId()
+    if existing ~= 0 then
+        if not joinAnnounced then
+            MAT:Print(string.format("|cffffd200LFG|r " ..
+                ((L["lfg_chan_joined"] or "joined channel #%d (%s)")),
+                existing, LFG.channelName))
+            joinAnnounced = true
+        end
+        return true
+    end
     if not JoinTemporaryChannel then return false end
     pcall(JoinTemporaryChannel, LFG.channelName)
     -- Defer hide a tick — channel join is async; chat frames pick it up next frame.
@@ -100,7 +111,14 @@ local function tryJoinChannel()
         LFG:ScheduleTimer(hideChannelFromUI, 0.5)
         LFG:ScheduleTimer(hideChannelFromUI, 2.0)
     end
-    return channelId() ~= 0
+    local id = channelId()
+    if id ~= 0 and not joinAnnounced then
+        MAT:Print(string.format("|cffffd200LFG|r " ..
+            ((L["lfg_chan_joined"] or "joined channel #%d (%s)")),
+            id, LFG.channelName))
+        joinAnnounced = true
+    end
+    return id ~= 0
 end
 
 -- ------------------------------------------------------------
@@ -130,8 +148,10 @@ local function broadcast(msg)
     local enc = encode(msg)
     if not enc then return false end
     ensurePrefixRegistered()
-    -- TBC: target can be channel name OR number; name is more portable.
-    rawSend(LFG.commPrefix, enc, "CHANNEL", LFG.channelName)
+    -- TBC 2.5.5: target for "CHANNEL" must be the numeric channel index
+    -- (as a stringified number), NOT the channel name. Passing the name
+    -- silently drops the message.
+    rawSend(LFG.commPrefix, enc, "CHANNEL", tostring(id))
     return true
 end
 
