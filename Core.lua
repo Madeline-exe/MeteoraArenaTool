@@ -129,14 +129,22 @@ function MAT:OnSlashCommand(input)
         -- Hidden support command: dump SpecGuess scores for current arena.
         if self.SpecGuess and self.SpecGuess.Dump then self.SpecGuess:Dump() end
     elseif cmd == "hud" then
-        if rest == "test" then
-            if self.Hud and self.Hud.ToggleTest then self.Hud:ToggleTest() end
+        local Hud = self.Hud
+        if not Hud then return end
+        if rest == "on" or rest == "enable" then
+            Hud:SetHidden(false)
+        elseif rest == "off" or rest == "disable" then
+            Hud:SetHidden(true)
+        elseif rest == "test" then
+            Hud:ToggleTest()
         elseif rest == "lock" or rest == "unlock" then
-            if self.Hud and self.Hud.ToggleLock then self.Hud:ToggleLock() end
+            Hud:ToggleLock()
         elseif rest == "reset" then
-            if self.Hud and self.Hud.ResetPosition then self.Hud:ResetPosition() end
+            Hud:ResetPosition()
+        elseif rest == "debug" then
+            Hud:PrintDebug()
         else
-            if self.Hud and self.Hud.ToggleHidden then self.Hud:ToggleHidden() end
+            Hud:PrintStatus()
         end
     elseif cmd == "version" then
         self:Print(L["version"]:format(self.version))
@@ -158,10 +166,12 @@ function MAT:PrintHelp()
     self:Print("|cffffd200/mat feed|r " .. L["help_feed"])
     self:Print("|cffffd200/mat lfg|r " .. (L["help_lfg"] or "— open LFG tab"))
     self:Print("|cffffd200/mat lfg debug|r " .. (L["help_lfg_debug"] or "— print LFG channel/listings state"))
-    self:Print("|cffffd200/mat hud|r " .. (L["help_hud"] or "— toggle in-arena HUD"))
+    self:Print("|cffffd200/mat hud|r " .. (L["help_hud"] or "— show HUD status"))
+    self:Print("|cffffd200/mat hud on|off|r " .. (L["help_hud_onoff"] or "— enable/disable HUD"))
     self:Print("|cffffd200/mat hud test|r " .. (L["help_hud_test"] or "— show HUD with fake comp for positioning"))
     self:Print("|cffffd200/mat hud lock|r " .. (L["help_hud_lock"] or "— lock/unlock HUD drag"))
     self:Print("|cffffd200/mat hud reset|r " .. (L["help_hud_reset"] or "— reset HUD position"))
+    self:Print("|cffffd200/mat hud debug|r " .. (L["help_hud_debug"] or "— dump HUD state for diagnosis"))
     self:Print("|cffffd200/mat wipe history|r " .. L["help_wipe"])
 end
 

@@ -370,6 +370,9 @@ local function getTabContent(tabValue)
     elseif tabValue == "lfg" and UI.LFGPanel then
         UI.LFGPanel:Build(f)
         tabRefreshers[tabValue] = function() UI.LFGPanel:Refresh() end
+    elseif tabValue == "settings" and UI.SettingsPanel then
+        UI.SettingsPanel:Build(f)
+        tabRefreshers[tabValue] = function() UI.SettingsPanel:Refresh() end
     else
         buildPlaceholderContent(f, "coming_soon")
     end

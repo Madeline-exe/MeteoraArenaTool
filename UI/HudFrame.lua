@@ -303,6 +303,11 @@ function Hud:ApplyLock()
     if lockBtn then lockBtn:SetText(locked and "[L]" or "[U]") end
 end
 
+function Hud:ApplyScale()
+    if not frame then return end
+    frame:SetScale(db().scale or 1.0)
+end
+
 function Hud:ShowFrame()
     if db().hidden then return end
     build()
@@ -332,6 +337,8 @@ end
 
 function Hud:OnArenaEntered()
     if hideTimer then self:CancelTimer(hideTimer); hideTimer = nil end
+    -- Diagnostic ping so a test session can confirm the message fires.
+    MAT:Print(string.format("HUD: arena entered (hidden=%s)", tostring(db().hidden)))
     self:ShowFrame()
 end
 
@@ -354,18 +361,56 @@ end
 -- Slash hooks (called from Core:OnSlashCommand)
 -- ------------------------------------------------------------
 
-function Hud:ToggleHidden()
+function Hud:SetHidden(hidden)
     local h = db()
-    h.hidden = not h.hidden
-    if h.hidden then self:HideFrame()
+    h.hidden = hidden and true or false
+    if h.hidden then
+        self:HideFrame()
+        MAT:Print("HUD: disabled (off)")
     else
         if testMode or (IsActiveBattlefieldArena and IsActiveBattlefieldArena()) then
             self:ShowFrame()
-        else
-            MAT:Print("HUD enabled. Will appear on arena entry.")
         end
+        MAT:Print("HUD: enabled (on). Appears on arena entry.")
     end
-    MAT:Print(h.hidden and "HUD: hidden" or "HUD: visible")
+end
+
+function Hud:PrintStatus()
+    local h = db()
+    local visible = frame and frame:IsShown() or false
+    MAT:Print(string.format(
+        "HUD: %s | drag %s | shown=%s | test=%s",
+        h.hidden and "OFF" or "ON",
+        h.locked and "LOCKED" or "UNLOCKED",
+        visible and "yes" or "no",
+        testMode and "yes" or "no"
+    ))
+    MAT:Print("  /mat hud on|off  /mat hud lock  /mat hud test  /mat hud reset  /mat hud debug")
+end
+
+function Hud:PrintDebug()
+    local h = db()
+    local inArena = IsActiveBattlefieldArena and IsActiveBattlefieldArena()
+    local detIn   = MAT.Detector and MAT.Detector.IsInArena and MAT.Detector:IsInArena()
+    local scan    = MAT.EnemyScanner and MAT.EnemyScanner.GetTeam and #MAT.EnemyScanner:GetTeam() or 0
+    MAT:Print("|cffffd200=== HUD debug ===|r")
+    MAT:Print(string.format("  hidden=%s locked=%s scale=%.2f",
+        tostring(h.hidden), tostring(h.locked), h.scale or 1.0))
+    MAT:Print(string.format("  IsActiveBattlefieldArena=%s Detector:IsInArena=%s",
+        tostring(inArena), tostring(detIn)))
+    MAT:Print(string.format("  frame built=%s shown=%s refreshTimer=%s",
+        tostring(frame ~= nil),
+        tostring(frame and frame:IsShown() or false),
+        tostring(refreshTimer ~= nil)))
+    MAT:Print(string.format("  EnemyScanner team size=%d testMode=%s",
+        scan, tostring(testMode)))
+    local p = h.point
+    if p then
+        MAT:Print(string.format("  saved point: %s x=%d y=%d",
+            tostring(p[1]), p[2] or 0, p[3] or 0))
+    else
+        MAT:Print("  saved point: <default>")
+    end
 end
 
 function Hud:ToggleLock()
