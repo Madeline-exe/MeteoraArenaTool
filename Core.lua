@@ -125,6 +125,9 @@ function MAT:OnSlashCommand(input)
         else
             if self.UI and self.UI.OpenTab then self.UI:OpenTab("lfg") end
         end
+    elseif cmd == "specguess" then
+        -- Hidden support command: dump SpecGuess scores for current arena.
+        if self.SpecGuess and self.SpecGuess.Dump then self.SpecGuess:Dump() end
     elseif cmd == "version" then
         self:Print(L["version"]:format(self.version))
     elseif cmd == "wipe" then

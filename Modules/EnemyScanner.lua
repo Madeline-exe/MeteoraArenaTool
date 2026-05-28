@@ -70,6 +70,23 @@ function Scanner:GetTeam()
     return out
 end
 
+-- GUID-keyed accessors for SpecGuess (kept internal to the addon —
+-- still not surfaced through MatchRecord). Callers that need to map
+-- a COMBAT_LOG sourceGUID back to an enemy slot use these.
+function Scanner:HasGuid(guid)
+    return guid ~= nil and enemies[guid] ~= nil
+end
+
+function Scanner:GetByGuid(guid)
+    return guid and enemies[guid] or nil
+end
+
+function Scanner:GetGuids()
+    local out = {}
+    for guid in pairs(enemies) do table.insert(out, guid) end
+    return out
+end
+
 function Scanner:OnEnable()
     self:RegisterEvent("ARENA_OPPONENT_UPDATE", "OnOpponentUpdate")
     self:RegisterEvent("UNIT_NAME_UPDATE",      "OnUnitNameUpdate")

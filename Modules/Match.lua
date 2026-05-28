@@ -59,6 +59,23 @@ function Match:OnArenaEnded(_, state)
 
     local enemy = MAT.EnemyScanner and MAT.EnemyScanner:GetTeam() or {}
 
+    -- Merge SpecGuess output into the enemy team. SpecGuess keys by GUID;
+    -- EnemyScanner:GetTeam strips GUIDs so we match on (classFile, name)
+    -- which is unique within one arena instance.
+    if MAT.SpecGuess then
+        local byKey = {}
+        for _, g in ipairs(MAT.SpecGuess:GetTeamSpecs()) do
+            byKey[(g.classFile or "") .. "|" .. (g.name or "")] = g
+        end
+        for _, e in ipairs(enemy) do
+            local g = byKey[(e.classFile or "") .. "|" .. (e.name or "")]
+            if g and g.spec then
+                e.spec           = g.spec
+                e.specConfidence = g.confidence
+            end
+        end
+    end
+
     local rec = {
         id           = nextId(db),
         ts           = time(),
