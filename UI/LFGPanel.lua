@@ -452,6 +452,21 @@ end
 local function refreshList()
     if not listingChild then return end
     local entries = MAT.LFG and MAT.LFG:GetListings() or {}
+
+    -- Prepend our own active listing so a solo poster sees their card
+    -- immediately and can verify "yes, my post is live."
+    local my = MAT.LFG and MAT.LFG:GetMyListing()
+    if my and my.expiresAt and my.expiresAt > time() then
+        local meName = UnitName("player") or "?"
+        table.insert(entries, 1, {
+            name     = meName,
+            sender   = meName,
+            listing  = my,
+            lastSeen = GetTime(),
+            isSelf   = true,
+        })
+    end
+
     local filtered = {}
     for _, e in ipairs(entries) do
         if passesFilter(e) then table.insert(filtered, e) end
@@ -464,6 +479,8 @@ local function refreshList()
     local width = listingScroll:GetWidth()
     listingChild:SetSize(math.max(width, 1), math.max(#filtered * (rowH + pad), 1))
 
+    local youTag = L["lfg_you_tag"] or "(you)"
+
     for i, entry in ipairs(filtered) do
         local row = ensureRow(i, listingChild)
         row:Show()
@@ -472,20 +489,34 @@ local function refreshList()
 
         local l = entry.listing
         row.when:SetText(timeAgo(l.createdAt))
-        row.who:SetText(colorClassName(entry.name, l.myClassFile))
+        if entry.isSelf then
+            row.who:SetText(colorClassName(entry.name, l.myClassFile) ..
+                " |cff4fdd4f" .. youTag .. "|r")
+        else
+            row.who:SetText(colorClassName(entry.name, l.myClassFile))
+        end
         row.bracket:SetText(l.bracket or "?")
         row.rating:SetText(l.myRating and tostring(l.myRating) or "-")
         row.comment:SetText(l.comment or "")
 
-        local target = entry.sender or entry.name
-        row.whisper:SetScript("OnClick", function()
-            if ChatFrame_SendTell then
-                ChatFrame_SendTell(target, ChatFrame1)
-            elseif ChatFrame_OpenChat then
-                ChatFrame_OpenChat("/w " .. target .. " ")
-            end
-        end)
-        row:SetScript("OnClick", function() row.whisper:Click() end)
+        if entry.isSelf then
+            row.whisper:SetText(L["lfg_clear"] or "Clear")
+            row.whisper:SetScript("OnClick", function()
+                if MAT.LFG then MAT.LFG:Clear() end
+            end)
+            row:SetScript("OnClick", function() row.whisper:Click() end)
+        else
+            row.whisper:SetText(L["lfg_whisper"] or "Whisper")
+            local target = entry.sender or entry.name
+            row.whisper:SetScript("OnClick", function()
+                if ChatFrame_SendTell then
+                    ChatFrame_SendTell(target, ChatFrame1)
+                elseif ChatFrame_OpenChat then
+                    ChatFrame_OpenChat("/w " .. target .. " ")
+                end
+            end)
+            row:SetScript("OnClick", function() row.whisper:Click() end)
+        end
     end
 
     for i = #filtered + 1, #listingRows do

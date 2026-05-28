@@ -2,7 +2,11 @@ local ADDON_NAME, ns = ...
 local MAT = ns.MAT
 local L = ns.L
 
-local LFG = MAT:NewModule("LFG", "AceEvent-3.0", "AceTimer-3.0", "AceComm-3.0")
+-- NB: AceComm is intentionally NOT mixed in. Its RegisterComm eats messages
+-- whose first byte falls in [\001..\009] (multipart control bytes). LibDeflate's
+-- EncodeForWoWAddonChannel uses \001 as the escape byte, so ~3.5% of payloads
+-- get swallowed silently. We register CHAT_MSG_ADDON ourselves below.
+local LFG = MAT:NewModule("LFG", "AceEvent-3.0", "AceTimer-3.0")
 MAT.LFG = LFG
 
 -- ============================================================
@@ -47,6 +51,18 @@ local LibDeflate   = LibStub("LibDeflate")
 
 local listings = {}     -- [senderName] = { listing = {...}, lastSeen = GetTime() }
 local sentPrefixRegistered = false
+
+-- Diagnostics
+local stats = {
+    tx           = 0,       -- broadcasts attempted (rawSend called)
+    txFail       = 0,       -- channel id was 0 or encode failed
+    rxRaw        = 0,       -- CHAT_MSG_ADDON events for our prefix
+    rxDecoded    = 0,       -- successfully decoded payloads
+    rxByOp       = { POST = 0, CLEAR = 0, PING = 0, OTHER = 0 },
+    rxSelf       = 0,       -- own echo filtered
+    rxLastSender = nil,
+    rxLastOp     = nil,
+}
 
 -- ------------------------------------------------------------
 -- Encoding
@@ -144,14 +160,15 @@ end
 
 local function broadcast(msg)
     local id = channelId()
-    if id == 0 then return false end
+    if id == 0 then stats.txFail = stats.txFail + 1; return false end
     local enc = encode(msg)
-    if not enc then return false end
+    if not enc then stats.txFail = stats.txFail + 1; return false end
     ensurePrefixRegistered()
     -- TBC 2.5.5: target for "CHANNEL" must be the numeric channel index
     -- (as a stringified number), NOT the channel name. Passing the name
     -- silently drops the message.
     rawSend(LFG.commPrefix, enc, "CHANNEL", tostring(id))
+    stats.tx = stats.tx + 1
     return true
 end
 
@@ -206,9 +223,10 @@ function LFG:OnEnable()
 
     ensurePrefixRegistered()
 
-    self:RegisterComm(self.commPrefix, "OnCommReceived")
-
-    self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnEnteringWorld")
+    -- Direct CHAT_MSG_ADDON registration — see header comment for why we
+    -- bypass AceComm:RegisterComm here.
+    self:RegisterEvent("CHAT_MSG_ADDON",          "OnAddonMessage")
+    self:RegisterEvent("PLAYER_ENTERING_WORLD",   "OnEnteringWorld")
     self:RegisterEvent("CHAT_MSG_CHANNEL_NOTICE", "OnChannelNotice")
 
     channelTimer = self:ScheduleRepeatingTimer("EnsureChannel", CHANNEL_CHECK)
@@ -264,25 +282,41 @@ local function shortSender(sender)
     return sender:match("^([^-]+)") or sender
 end
 
-function LFG:OnCommReceived(_, payload, _, sender)
+function LFG:OnAddonMessage(_, prefix, payload, _, sender)
+    if prefix ~= self.commPrefix then return end
     if not sender or sender == "" then return end
+    stats.rxRaw = stats.rxRaw + 1
+
     local me = UnitName("player")
-    if shortSender(sender) == me then return end  -- ignore our own echoes
+    local short = shortSender(sender)
+    if short == me then
+        stats.rxSelf = stats.rxSelf + 1
+        return  -- ignore our own echoes
+    end
 
     local msg = decode(payload)
     if not msg or type(msg) ~= "table" then return end
+    stats.rxDecoded = stats.rxDecoded + 1
+    stats.rxLastSender = sender
 
     local op = msg.op
+    stats.rxLastOp = op
+    if stats.rxByOp[op] then
+        stats.rxByOp[op] = stats.rxByOp[op] + 1
+    else
+        stats.rxByOp.OTHER = stats.rxByOp.OTHER + 1
+    end
+
     if op == "POST" then
         local l = sanitizeListing(msg.listing)
         if not l then return end
         if l.expiresAt < time() then return end
-        listings[shortSender(sender)] = { listing = l, lastSeen = GetTime(), sender = sender }
+        listings[short] = { listing = l, lastSeen = GetTime(), sender = sender }
         self:CapListings()
         MAT:SendMessage("MAT_LFG_UPDATED")
     elseif op == "CLEAR" then
-        if listings[shortSender(sender)] then
-            listings[shortSender(sender)] = nil
+        if listings[short] then
+            listings[short] = nil
             MAT:SendMessage("MAT_LFG_UPDATED")
         end
     elseif op == "PING" then
@@ -434,6 +468,11 @@ function LFG:DebugStatus()
         id == 0 and "|cffff5555NOT JOINED|r" or "|cff4fdd4fjoined|r"))
     MAT:Print(string.format("commPrefix=%s, registered=%s",
         self.commPrefix, tostring(sentPrefixRegistered)))
+    MAT:Print(string.format("counters: tx=%d txFail=%d  rxRaw=%d rxDecoded=%d rxSelf=%d",
+        stats.tx, stats.txFail, stats.rxRaw, stats.rxDecoded, stats.rxSelf))
+    MAT:Print(string.format("rxByOp: POST=%d CLEAR=%d PING=%d OTHER=%d  last=%s/%s",
+        stats.rxByOp.POST, stats.rxByOp.CLEAR, stats.rxByOp.PING, stats.rxByOp.OTHER,
+        tostring(stats.rxLastOp or "-"), tostring(stats.rxLastSender or "-")))
     local my = MAT.db.profile.lfg.myListing
     if my then
         MAT:Print(string.format("my listing: bracket=%s class=%s rating=%s expires=%ds",
