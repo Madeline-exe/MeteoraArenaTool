@@ -128,6 +128,16 @@ function MAT:OnSlashCommand(input)
     elseif cmd == "specguess" then
         -- Hidden support command: dump SpecGuess scores for current arena.
         if self.SpecGuess and self.SpecGuess.Dump then self.SpecGuess:Dump() end
+    elseif cmd == "hud" then
+        if rest == "test" then
+            if self.Hud and self.Hud.ToggleTest then self.Hud:ToggleTest() end
+        elseif rest == "lock" or rest == "unlock" then
+            if self.Hud and self.Hud.ToggleLock then self.Hud:ToggleLock() end
+        elseif rest == "reset" then
+            if self.Hud and self.Hud.ResetPosition then self.Hud:ResetPosition() end
+        else
+            if self.Hud and self.Hud.ToggleHidden then self.Hud:ToggleHidden() end
+        end
     elseif cmd == "version" then
         self:Print(L["version"]:format(self.version))
     elseif cmd == "wipe" then
@@ -148,6 +158,10 @@ function MAT:PrintHelp()
     self:Print("|cffffd200/mat feed|r " .. L["help_feed"])
     self:Print("|cffffd200/mat lfg|r " .. (L["help_lfg"] or "— open LFG tab"))
     self:Print("|cffffd200/mat lfg debug|r " .. (L["help_lfg_debug"] or "— print LFG channel/listings state"))
+    self:Print("|cffffd200/mat hud|r " .. (L["help_hud"] or "— toggle in-arena HUD"))
+    self:Print("|cffffd200/mat hud test|r " .. (L["help_hud_test"] or "— show HUD with fake comp for positioning"))
+    self:Print("|cffffd200/mat hud lock|r " .. (L["help_hud_lock"] or "— lock/unlock HUD drag"))
+    self:Print("|cffffd200/mat hud reset|r " .. (L["help_hud_reset"] or "— reset HUD position"))
     self:Print("|cffffd200/mat wipe history|r " .. L["help_wipe"])
 end
 

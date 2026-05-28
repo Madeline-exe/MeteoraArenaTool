@@ -210,7 +210,11 @@ local function enemyShort(team)
     if not team or #team == 0 then return "?" end
     local parts = {}
     for _, p in ipairs(team) do
-        table.insert(parts, colorClass(p.name or "?", p.classFile))
+        local s = colorClass(p.name or "?", p.classFile)
+        if p.spec and p.spec ~= "" then
+            s = s .. " |cff999999(" .. p.spec .. ")|r"
+        end
+        table.insert(parts, s)
     end
     return table.concat(parts, ", ")
 end

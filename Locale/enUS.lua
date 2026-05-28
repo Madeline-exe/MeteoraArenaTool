@@ -13,6 +13,10 @@ L["help_show"] = "— open main window"
 L["help_feed"] = "— jump to match feed"
 L["help_lfg"]  = "— open LFG / team finder"
 L["help_wipe"] = "— delete all stored matches"
+L["help_hud"]       = "— toggle in-arena HUD overlay"
+L["help_hud_test"]  = "— show HUD with fake comp for positioning"
+L["help_hud_lock"]  = "— lock/unlock HUD drag"
+L["help_hud_reset"] = "— reset HUD position to center"
 
 -- Minimap
 L["minimap_lmb"] = "open"
